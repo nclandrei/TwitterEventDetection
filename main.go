@@ -16,7 +16,6 @@ func main() {
 	scanner := bufio.NewScanner(os.Stdin)
 	scanner.Scan()
 	option := scanner.Text()
-	fmt.Printf("%s\n", option)
 	if option == "1" {
 		fmt.Println("Please input source CSV file (needs to be in the same folder as this Go file: ")
 		scanner.Scan()
