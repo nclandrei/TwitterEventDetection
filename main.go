@@ -1,14 +1,11 @@
 package main
 
 import (
-	"bufio"
-	"encoding/csv"
 	"fmt"
-	"io"
-	"log"
-	"os"
 	"sort"
 	"strconv"
+
+	"github.com/nclandrei/TwitterEventDetection/io"
 )
 
 // Cluster defines the structure of a cluster composed of multiple tweets
@@ -56,26 +53,7 @@ func (c Cluster) ComputeCentroidTime() float64 {
 }
 
 func main() {
-	csvFile, _ := os.Open("clusters.sortedby.clusterid.csv")
-	reader := csv.NewReader(bufio.NewReader(csvFile))
-	var tweets []Tweet
-	for {
-		line, error := reader.Read()
-		if error == io.EOF {
-			break
-		} else if error != nil {
-			log.Fatal(error)
-		}
-		tweets = append(tweets, Tweet{
-			ClusterID:   convertCsvStringToInt(line[0]),
-			NamedEntity: line[1],
-			TweetID:     convertCsvStringToInt(line[2]),
-			TimestampMS: convertCsvStringToInt(line[3]),
-			UserID:      convertCsvStringToInt(line[4]),
-			TweetTokens: line[5],
-			TweetText:   line[6],
-		})
-	}
+	tweets := io.ReadFromCSV("clusters.sortedby.clusterid.csv")
 	clusters := createClusters(tweets)
 	clusters = mergeEventsOnNamedEntities(clusters, 3600000)
 	sort.Slice(clusters, func(i, j int) bool {
