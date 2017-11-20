@@ -16,6 +16,11 @@ type Cluster struct {
 	ClusterTweets []Tweet
 }
 
+// AddClusterTweet adds tweet to that cluster
+func (c *Cluster) AddClusterTweet(tweet Tweet) {
+	c.ClusterTweets = append(c.ClusterTweets, tweet)
+}
+
 // Tweet defines the structure of a tweet
 type Tweet struct {
 	ClusterID   int
@@ -48,7 +53,9 @@ func main() {
 			TweetText:   line[6],
 		})
 	}
-	createClusters(tweets)
+	clusters := createClusters(tweets)
+	clusters = filterByNumberOfTweets(clusters, 10)
+	fmt.Printf("%v\n", len(clusters))
 }
 
 func convertCsvStringToInt(str string) int {
@@ -60,31 +67,30 @@ func convertCsvStringToInt(str string) int {
 }
 
 func createClusters(tweets []Tweet) []Cluster {
-	var clusters []Cluster
+	clusters := []Cluster{}
 	for _, tweet := range tweets {
-		if !contains(clusters, tweet.ClusterID) {
-			cluster := new(Cluster)
-			cluster.ID = tweet.ClusterID
-			cluster.ClusterTweets = []Tweet{}
-			cluster.ClusterTweets = append(cluster.ClusterTweets, tweet)
-			clusters = append(clusters, *cluster)
+		if len(clusters) == 0 || !contains(clusters, tweet.ClusterID) {
+			cluster := Cluster{
+				ID:            tweet.ClusterID,
+				ClusterTweets: []Tweet{},
+			}
+			cluster.AddClusterTweet(tweet)
+			clusters = append(clusters, cluster)
 		} else {
-			cluster := getClusterByID(clusters, tweet.ClusterID)
-			cluster.ClusterTweets = append(cluster.ClusterTweets, tweet)
+			clusterIndex := getClusterByID(clusters, tweet.ClusterID)
+			clusters[clusterIndex].AddClusterTweet(tweet)
 		}
 	}
 	return clusters
 }
 
-func getClusterByID(clusters []Cluster, id int) Cluster {
-	var cluster Cluster
-	for _, tempCluster := range clusters {
-		if tempCluster.ID == id {
-			cluster = tempCluster
-			break
+func getClusterByID(clusters []Cluster, id int) int {
+	for index, cluster := range clusters {
+		if cluster.ID == id {
+			return index
 		}
 	}
-	return cluster
+	return -1
 }
 
 func contains(clusters []Cluster, clusterID int) bool {
@@ -94,4 +100,13 @@ func contains(clusters []Cluster, clusterID int) bool {
 		}
 	}
 	return false
+}
+
+func filterByNumberOfTweets(clusters []Cluster, numberOfTweets int) []Cluster {
+	for i := len(clusters) - 1; i >= 0; i-- {
+		if len(clusters[i].ClusterTweets) < numberOfTweets {
+			clusters = append(clusters[:i], clusters[i+1:]...)
+		}
+	}
+	return clusters
 }
