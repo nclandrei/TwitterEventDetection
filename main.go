@@ -41,7 +41,6 @@ func main() {
 		tweets := io.ReadFromCSV(sourceCSVFile)
 		clusters := cluster.CreateClusters(tweets)
 		clusters = filterByNumberOfTweets(clusters, numberOfTweetsInt)
-		io.WriteToCSV(cluster.ConvertListOfClustersToListOfTweets(clusters), "result.csv")
 		fmt.Println("Please input your window interval in milliseconds: ")
 		scanner.Scan()
 		windowInterval := scanner.Text()
@@ -58,6 +57,8 @@ func main() {
 	}
 }
 
+// filterByNumberOfTweets takes a slice of clusters and numberOfTweets threshold
+// and drops all clusters that do not have at least numberOfTweets tweets
 func filterByNumberOfTweets(clusters []cluster.Cluster, numberOfTweets int) []cluster.Cluster {
 	for i := len(clusters) - 1; i >= 0; i-- {
 		if len(clusters[i].ClusterTweets) < numberOfTweets {
