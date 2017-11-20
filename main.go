@@ -50,7 +50,6 @@ func main() {
 			return clusters[i].CentroidTime < clusters[j].CentroidTime
 		})
 		io.WriteToCSV(cluster.ConvertListOfClustersToListOfTweets(clusters), "result.csv")
-
 		fmt.Println("All done. Your output CSV file is in result.csv")
 	} else {
 		fmt.Println("You did not enter neither 1 nor 2. Please try again.")
@@ -68,6 +67,8 @@ func filterByNumberOfTweets(clusters []cluster.Cluster, numberOfTweets int) []cl
 	return clusters
 }
 
+// mergeEventsOnNamedEntities takes a slice of clusters and a window interval
+// and performs event merging using that interval for burst detection
 func mergeEventsOnNamedEntities(clusters []cluster.Cluster, windowInterval int) []cluster.Cluster {
 	clusterMap := make(map[string][]cluster.Cluster)
 	for _, cluster := range clusters {
