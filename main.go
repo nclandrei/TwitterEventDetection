@@ -7,18 +7,15 @@ import (
 	"io"
 	"log"
 	"os"
+	"sort"
 	"strconv"
 )
 
 // Cluster defines the structure of a cluster composed of multiple tweets
 type Cluster struct {
 	ID            int
+	CentroidTime  float64
 	ClusterTweets []Tweet
-}
-
-// AddClusterTweet adds tweet to that cluster
-func (c *Cluster) AddClusterTweet(tweet Tweet) {
-	c.ClusterTweets = append(c.ClusterTweets, tweet)
 }
 
 // Tweet defines the structure of a tweet
@@ -30,6 +27,32 @@ type Tweet struct {
 	TimestampMS int
 	TweetTokens string
 	TweetText   string
+}
+
+// AddClusterTweet adds tweet to that cluster
+func (c *Cluster) AddClusterTweet(tweet Tweet) {
+	c.ClusterTweets = append(c.ClusterTweets, tweet)
+}
+
+// AddAllClusterTweets adds all tweets from one cluster into another
+func (c *Cluster) AddAllClusterTweets(cluster Cluster) {
+	for _, tweet := range cluster.ClusterTweets {
+		c.AddClusterTweet(tweet)
+	}
+}
+
+// SetCentroidTime setter for centroidTime property
+func (c *Cluster) SetCentroidTime(centroidTime float64) {
+	c.CentroidTime = centroidTime
+}
+
+// ComputeCentroidTime computes the average timestamp for a cluster
+func (c Cluster) ComputeCentroidTime() float64 {
+	sum := 0
+	for _, tweet := range c.ClusterTweets {
+		sum += tweet.TimestampMS
+	}
+	return (float64)(sum / len(c.ClusterTweets))
 }
 
 func main() {
@@ -54,8 +77,11 @@ func main() {
 		})
 	}
 	clusters := createClusters(tweets)
-	clusters = filterByNumberOfTweets(clusters, 10)
-	fmt.Printf("%v\n", len(clusters))
+	clusters = mergeEventsOnNamedEntities(clusters, 3600000)
+	sort.Slice(clusters, func(i, j int) bool {
+		return clusters[i].CentroidTime < clusters[j].CentroidTime
+	})
+	// clusters = filterByNumberOfTweets(clusters, 10)
 }
 
 func convertCsvStringToInt(str string) int {
@@ -80,6 +106,9 @@ func createClusters(tweets []Tweet) []Cluster {
 			clusterIndex := getClusterByID(clusters, tweet.ClusterID)
 			clusters[clusterIndex].AddClusterTweet(tweet)
 		}
+	}
+	for _, cluster := range clusters {
+		cluster.SetCentroidTime(cluster.ComputeCentroidTime())
 	}
 	return clusters
 }
@@ -109,4 +138,34 @@ func filterByNumberOfTweets(clusters []Cluster, numberOfTweets int) []Cluster {
 		}
 	}
 	return clusters
+}
+
+func mergeEventsOnNamedEntities(clusters []Cluster, windowInterval int) []Cluster {
+	clusterMap := make(map[string][]Cluster)
+	for _, cluster := range clusters {
+		namedEntity := cluster.ClusterTweets[0].NamedEntity
+		if clusterMap[namedEntity] == nil {
+			clusterMap[namedEntity] = append(clusterMap[namedEntity], cluster)
+		}
+		prevClusters := clusterMap[namedEntity]
+		for _, prevCluster := range prevClusters {
+			if (cluster.CentroidTime - prevCluster.CentroidTime) > (float64)(windowInterval) {
+				prevClusters = append(prevClusters, cluster)
+			}
+			if namedEntity == prevCluster.ClusterTweets[0].NamedEntity {
+				cluster.AddAllClusterTweets(prevCluster)
+			}
+
+		}
+		clusterMap[namedEntity] = prevClusters
+	}
+	return convertClusterMapToSlice(clusterMap)
+}
+
+func convertClusterMapToSlice(clusterMap map[string][]Cluster) []Cluster {
+	var clusterSlice []Cluster
+	for _, clusters := range clusterMap {
+		clusterSlice = append(clusterSlice, clusters...)
+	}
+	return clusterSlice
 }
